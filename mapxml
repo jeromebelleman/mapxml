@@ -1,40 +1,54 @@
 #! /usr/bin/env python
 
+'''
+Make KML map canonical
+'''
+
 import sys
-import os
 import argparse
 import xml.etree.ElementTree
 import zipfile
-import yaml
 
-def rmelms(tree, tag):
-    for elm in tree.findall('.//%s/..' % tag):
-        for subelm in list(elm.getchildren()):
-            if subelm.tag == tag:
-                elm.remove(subelm)
+def printplacemarks(kml):
+    '''
+    Print placemarks
+    '''
 
-def fixxml(cfg, kml):
     tree = xml.etree.ElementTree.parse(kml)
     space = tree.getroot().tag.split('}')[0] + '}'
 
-    for rmv in cfg['remove']:
-        rmelms(tree, '%s%s' % (space, rmv))
-    tree.write(sys.stdout)
+    placemarks = []
+    for placemark in tree.findall('.//%sPlacemark' % space):
+        name = placemark.find('%sname' % space).text
+        coord = placemark.find('%sPoint/%scoordinates' % (space, space)).text
+        placemarks.append((name, coord))
+
+    for name, coord in sorted(placemarks):
+        print '  <Placemark>'
+        print '   <name>%s</name>' % name
+        print '   <Point><coordinates>%s</coordinates></Point>' % coord
+        print '  </Placemark>'
 
 def main():
-    parser = argparse.ArgumentParser()
+    '''
+    Parse arguments
+    '''
+
+    parser = argparse.ArgumentParser(description="Make KML map canonical.")
     parser.add_argument('kmz0')
     parser.add_argument('kmz1')
     args = parser.parse_args()
-
-    with open(os.path.expanduser('~/.mapxml/config.yaml')) as fhl:
-        cfg = yaml.load(fhl)
 
     for kmz in args.kmz0, args.kmz1:
         zfl = zipfile.ZipFile(kmz)
         for member in zfl.namelist():
             if member.endswith('.kml'):
-                fixxml(cfg, zfl.open(member))
+                print '<?xml version="1.0" encoding="UTF-8"?>'
+                print '<kml>'
+                print ' <Document>'
+                printplacemarks(zfl.open(member))
+                print ' </Document>'
+                print '</kml>'
                 break
 
 if __name__ == '__main__':
