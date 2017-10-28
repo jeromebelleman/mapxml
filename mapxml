@@ -13,17 +13,21 @@ import subprocess
 import tempfile
 import xml.etree.ElementTree
 import zipfile
+import re
 
-def printplacemarks(fhl, kml):
+RESPACE = re.compile('^(?P<space>{[^}]+})?')
+
+def printplacemarks(tmp, fhl):
     '''
     Print placemarks
     '''
 
-    tree = xml.etree.ElementTree.parse(kml)
-    space = tree.getroot().tag.split('}')[0] + '}'
+    tree = xml.etree.ElementTree.parse(fhl)
+    space = RESPACE.match(tree.getroot().tag).group('space')
+    space = space if space else ''
 
     docname = tree.find('%sDocument/%sname' % (space, space)).text
-    print >> fhl, '  <name>%s</name>' % docname
+    print >> tmp, '  <name>%s</name>' % docname
 
     placemarks = []
     for placemark in tree.findall('.//%sPlacemark' % space):
@@ -32,19 +36,20 @@ def printplacemarks(fhl, kml):
         placemarks.append((name, ','.join(coord.strip().split(',')[:2])))
 
     for name, coord in sorted(placemarks):
-        print >> fhl, '  <Placemark>'
-        print >> fhl, '   <name>%s</name>' % name
-        print >> fhl, '   <Point><coordinates>%s</coordinates></Point>' % coord
-        print >> fhl, '  </Placemark>'
+        print >> tmp, '  <Placemark>'
+        print >> tmp, '   <name>%s</name>' % name
+        print >> tmp, '   <Point><coordinates>%s</coordinates></Point>' % coord
+        print >> tmp, '  </Placemark>'
 
 def main():
     '''
     Parse arguments
     '''
 
-    parser = argparse.ArgumentParser(description="Make KML map canonical.")
-    parser.add_argument('kmz0')
-    parser.add_argument('kmz1')
+    parser = argparse.ArgumentParser(
+        description="Make KML map canonical and compare them.")
+    parser.add_argument('mapfile0')
+    parser.add_argument('mapfile1')
     args = parser.parse_args()
 
     mapxmldir = os.path.expanduser('~/.mapxml')
@@ -54,23 +59,28 @@ def main():
     except OSError:
         pass
 
-    kmls = []
-    kmls.append(tempfile.NamedTemporaryFile(dir=tmpdir))
-    kmls.append(tempfile.NamedTemporaryFile(dir=tmpdir))
-    for i, kmz in enumerate((args.kmz0, args.kmz1)):
-        zfl = zipfile.ZipFile(kmz)
-        for member in zfl.namelist():
-            if member.endswith('.kml'):
-                print >> kmls[i], '<?xml version="1.0" encoding="UTF-8"?>'
-                print >> kmls[i], '<kml>'
-                print >> kmls[i], ' <Document>'
-                printplacemarks(kmls[i], zfl.open(member))
-                print >> kmls[i], ' </Document>'
-                print >> kmls[i], '</kml>'
-                kmls[i].flush()
-                break
+    tmps = []
+    tmps.append(tempfile.NamedTemporaryFile(dir=tmpdir))
+    tmps.append(tempfile.NamedTemporaryFile(dir=tmpdir))
+    for i, mapfile in enumerate((args.mapfile0, args.mapfile1)):
 
-    subprocess.call(['vimdiff'] + [kml.name for kml in kmls])
+        if mapfile.endswith('.kmz'):
+            zfl = zipfile.ZipFile(mapfile)
+            for member in zfl.namelist():
+                if member.endswith('.kml'):
+                    fhl = zfl.open(member)
+        else:
+            fhl = open(mapfile)
+
+        print >> tmps[i], '<?xml version="1.0" encoding="UTF-8"?>'
+        print >> tmps[i], '<kml>'
+        print >> tmps[i], ' <Document>'
+        printplacemarks(tmps[i], fhl)
+        print >> tmps[i], ' </Document>'
+        print >> tmps[i], '</kml>'
+        tmps[i].flush()
+
+    subprocess.call(['vimdiff'] + [tmp.name for tmp in tmps])
 
 if __name__ == '__main__':
     sys.exit(main())
