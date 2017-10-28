@@ -1,0 +1,25 @@
+.TH "MAPXML" "1" "October 2017" "" ""
+.hy
+.SH NAME
+.PP
+mapxml \[en] Make KML maps canonical and compare them
+.SH SYNOPSIS
+.PP
+usage: mapxml [\-h] kmz0 kmz1
+.PP
+positional arguments:
+.IP \[bu] 2
+kmz0
+.IP \[bu] 2
+kmz1
+.PP
+optional arguments:
+.IP \[bu] 2
+\-h, \-\-help show this help message and exit
+.SH DESCRIPTION
+.PP
+Make KML maps canonical and compare them with vimdiff.
+This lets you then make any subsequent changes before saving any of the
+two diff buffers to a KML file in a location of your choosing.
+.SH AUTHORS
+Jérôme Belleman.
