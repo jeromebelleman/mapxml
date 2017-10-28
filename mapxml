@@ -82,7 +82,7 @@ def main():
         print >> tmps[i], '</kml>'
         tmps[i].flush()
 
-    subprocess.call(['vimdiff'] + [tmp.name for tmp in tmps])
+    subprocess.call(['vimdiff', '-R'] + [tmp.name for tmp in tmps])
 
 if __name__ == '__main__':
     sys.exit(main())
