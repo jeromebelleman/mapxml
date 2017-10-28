@@ -24,7 +24,7 @@ def printplacemarks(fhl, kml):
     for placemark in tree.findall('.//%sPlacemark' % space):
         name = placemark.find('%sname' % space).text
         coord = placemark.find('%sPoint/%scoordinates' % (space, space)).text
-        placemarks.append((name, coord))
+        placemarks.append((name, coord.strip()))
 
     for name, coord in sorted(placemarks):
         print >> fhl, '  <Placemark>'
