@@ -12,6 +12,7 @@ import argparse
 import subprocess
 import tempfile
 import xml.etree.ElementTree
+import xml.sax.saxutils
 import zipfile
 import re
 
@@ -27,13 +28,14 @@ def printplacemarks(tmp, fhl):
     space = space if space else ''
 
     docname = tree.find('%sDocument/%sname' % (space, space)).text
-    print >> tmp, '  <name>%s</name>' % docname
+    print >> tmp, '  <name>%s</name>' % xml.sax.saxutils.escape(docname)
 
     placemarks = []
     for placemark in tree.findall('.//%sPlacemark' % space):
         name = placemark.find('%sname' % space).text
         coord = placemark.find('%sPoint/%scoordinates' % (space, space)).text
-        placemarks.append((name, ','.join(coord.strip().split(',')[:2])))
+        placemarks.append((xml.sax.saxutils.escape(name),
+                          ','.join(coord.strip().split(',')[:2])))
 
     for name, coord in sorted(placemarks):
         print >> tmp, '  <Placemark>'
