@@ -5,6 +5,8 @@ Make KML map canonical
 '''
 
 import sys
+reload(sys)
+sys.setdefaultencoding('UTF8')
 import os
 import argparse
 import subprocess
@@ -19,6 +21,9 @@ def printplacemarks(fhl, kml):
 
     tree = xml.etree.ElementTree.parse(kml)
     space = tree.getroot().tag.split('}')[0] + '}'
+
+    docname = tree.find('%sDocument/%sname' % (space, space)).text
+    print >> fhl, '  <name>%s</name>' % docname
 
     placemarks = []
     for placemark in tree.findall('.//%sPlacemark' % space):
