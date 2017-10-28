@@ -5,11 +5,14 @@ Make KML map canonical
 '''
 
 import sys
+import os
 import argparse
+import subprocess
+import tempfile
 import xml.etree.ElementTree
 import zipfile
 
-def printplacemarks(kml):
+def printplacemarks(fhl, kml):
     '''
     Print placemarks
     '''
@@ -24,10 +27,10 @@ def printplacemarks(kml):
         placemarks.append((name, coord))
 
     for name, coord in sorted(placemarks):
-        print '  <Placemark>'
-        print '   <name>%s</name>' % name
-        print '   <Point><coordinates>%s</coordinates></Point>' % coord
-        print '  </Placemark>'
+        print >> fhl, '  <Placemark>'
+        print >> fhl, '   <name>%s</name>' % name
+        print >> fhl, '   <Point><coordinates>%s</coordinates></Point>' % coord
+        print >> fhl, '  </Placemark>'
 
 def main():
     '''
@@ -39,17 +42,30 @@ def main():
     parser.add_argument('kmz1')
     args = parser.parse_args()
 
-    for kmz in args.kmz0, args.kmz1:
+    mapxmldir = os.path.expanduser('~/.mapxml')
+    tmpdir = mapxmldir + '/tmp'
+    try:
+        os.makedirs(tmpdir)
+    except OSError:
+        pass
+
+    kmls = []
+    kmls.append(tempfile.NamedTemporaryFile(dir=tmpdir))
+    kmls.append(tempfile.NamedTemporaryFile(dir=tmpdir))
+    for i, kmz in enumerate((args.kmz0, args.kmz1)):
         zfl = zipfile.ZipFile(kmz)
         for member in zfl.namelist():
             if member.endswith('.kml'):
-                print '<?xml version="1.0" encoding="UTF-8"?>'
-                print '<kml>'
-                print ' <Document>'
-                printplacemarks(zfl.open(member))
-                print ' </Document>'
-                print '</kml>'
+                print >> kmls[i], '<?xml version="1.0" encoding="UTF-8"?>'
+                print >> kmls[i], '<kml>'
+                print >> kmls[i], ' <Document>'
+                printplacemarks(kmls[i], zfl.open(member))
+                print >> kmls[i], ' </Document>'
+                print >> kmls[i], '</kml>'
+                kmls[i].flush()
                 break
+
+    subprocess.call(['vimdiff'] + [kml.name for kml in kmls])
 
 if __name__ == '__main__':
     sys.exit(main())
